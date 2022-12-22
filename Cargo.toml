@@ -1,0 +1,9 @@
+[package]
+name = "pbs_cmds"
+version = "0.0.1"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+pbs = { path = "../pbs" }
+clap = { version = "4.0", features=["derive"]}
