@@ -1,6 +1,7 @@
 use clap::{Parser, Subcommand};
 use pbs::{Attrl, Resource, Server};
 
+
 #[derive(Debug, Parser)]
 #[command(name = "wpbs")]
 #[command(about = "BusyBox style command for all things pbs", long_about = None)]
@@ -27,6 +28,7 @@ enum Commands {
 }
 
 fn main() {
+    env_logger::init();
     let args = Cli::parse();
     let srv = if let Some(s) = args.server {
         Server::connect_to(&s)
@@ -41,6 +43,6 @@ fn main() {
         _ => todo!(),
     };
     for elem in resp {
-        println!("{}", elem);
+        println!("{elem}");
     }
 }
