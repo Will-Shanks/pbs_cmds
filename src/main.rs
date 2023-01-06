@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
-use pbs::{Server};
+use pbs::{Attrl, Server};
 
 
 #[derive(Debug, Parser)]
@@ -7,43 +7,80 @@ use pbs::{Server};
 #[command(about = "BusyBox style command for all things pbs", long_about = None)]
 struct Cli {
     #[command(subcommand)]
-    command: Commands,
+    noun: Noun,
     #[arg(short, long)]
     server: Option<String>,
 }
 
 #[derive(Debug, Subcommand)]
-enum Commands {
-    #[command(arg_required_else_help = true, subcommand)]
-    Stat(Resource),
-    #[command(arg_required_else_help = true)]
+enum Verb {
+    Stat(Attribs),
     Sub,
-    #[command(arg_required_else_help = true)]
-    Del,
+//    Del,
 }
 
 #[derive(Debug, Subcommand)]
-enum Resource {
-    Job {
-        #[arg(short, long)]
-        attribs: Vec<String>,
-        #[arg(short, long)]
-        out: Vec<String>,
-    },
-    Host(Attribs),
-    Reservation(Attribs),
-    Resource(Attribs),
-    #[command(name="vnode")]
-    Vnode(Attribs),
-    Que(Attribs),
-    Scheduler(Attribs),
-    Server(Attribs),
+enum StatVerb {
+    Stat(Attribs),
+}
+
+#[derive(Debug, Subcommand)]
+enum Noun {
+    #[command(subcommand)]
+    Job(Verb),
+    #[command(subcommand)]
+    Host(StatVerb),
+    #[command(subcommand, name="resv")]
+    Reservation(StatVerb),
+    #[command(subcommand)]
+    Resource(StatVerb),
+    #[command(name="vnode", subcommand)]
+    Vnode(StatVerb),
+    #[command(subcommand)]
+    Que(StatVerb),
+    #[command(subcommand, name="sched")]
+    Scheduler(StatVerb),
+    #[command(subcommand, name="srv")]
+    Server(StatVerb),
 }
 
 #[derive(Debug, clap::Args)]
 struct Attribs {
+    #[arg(help="name, or nameset ex: casper1[2-7]")]
     name: Option<String>,
+    #[arg(short, long, help="filter attributes, ex: state=free, can use =, !=, <, <=, >, and >=")]
+    attribs: Vec<String>,
+    #[arg(short, long, help="attributes to display, ex: state")]
     out: Vec<String>,
+}
+
+impl Attribs {
+    fn attribs(&self) -> Vec<Attrl> {
+        self.attribs.iter().map(|x| x.as_str().into()).collect()
+    }
+    fn out(&self) -> Vec<Attrl> {
+        self.out.iter().map(|x| x.as_str().into()).collect()
+    }
+    fn contains_name(&self, name: &str) -> bool {
+        if self.name == None { return true};
+        for n in self.names() {
+            if name == n {return true;}
+        }
+        false
+    }
+    fn names(&self) -> Vec<String> {
+        if let Some(name) = &self.name {
+            hostlist_parser::parse(&name).unwrap()
+        }else{
+            vec!()
+        }
+    }
+}
+
+impl Default for Attribs {
+    fn default() -> Self {
+        Attribs{ name:None, attribs: vec!(), out: vec!()}
+    }
 }
 
 fn main() {
@@ -54,23 +91,87 @@ fn main() {
     } else {
         Server::new()
     };
-    match args.command {
-        Commands::Stat(r) => {
-            match r {
-                Resource::Job{attribs: a, out: o} => {
-                    let a = a.iter().map(|x| x.as_str().into()).collect();
-                    let o = o.iter().map(|x| x.as_str().into()).collect();
-                    srv.stat_job(a, o).unwrap().for_each(|x| println!("{x}"))
+    match args.noun {
+        Noun::Job(verb) => {
+            match verb {
+                Verb::Stat(attribs) => {
+                    srv.stat_job(attribs.attribs(), attribs.out()).unwrap()
+                        .filter(|s| attribs.contains_name(s.name()))
+                        .for_each(|x| println!("{x}"));
                 },
-                Resource::Host(h) => srv.stat_host(h.name, h.out.iter().map(|x| x.as_str().into()).collect()).unwrap().for_each(|x| println!("{x}")),
-                Resource::Reservation(h) => srv.stat_reservation(h.name, h.out.iter().map(|x| x.as_str().into()).collect()).unwrap().for_each(|x| println!("{x}")),
-                Resource::Resource(h) => srv.stat_resource(h.name, h.out.iter().map(|x| x.as_str().into()).collect()).unwrap().for_each(|x| println!("{x}")),
-                Resource::Vnode(h) => srv.stat_vnode(h.name, h.out.iter().map(|x| x.as_str().into()).collect()).unwrap().for_each(|x| println!("{x}")),
-                Resource::Que(h) => srv.stat_que(h.name, h.out.iter().map(|x| x.as_str().into()).collect()).unwrap().for_each(|x| println!("{x}")),
-                Resource::Scheduler(h) => srv.stat_scheduler(h.name, h.out.iter().map(|x| x.as_str().into()).collect()).unwrap().for_each(|x| println!("{x}")),
-                Resource::Server(h) => srv.stat_server(h.name, h.out.iter().map(|x| x.as_str().into()).collect()).unwrap().for_each(|x| println!("{x}")),
+                Verb::Sub => {todo!()},
+                //Verb::Del => {todo!()},
             }
         },
-        _ => todo!(),
-    };
+        Noun::Host(verb) => {
+            match verb {
+                StatVerb::Stat(attribs) => {
+                    //TODO don't do a full host stat if attribs.names().len() is short
+                    srv.stat_host(&None, attribs.out()).unwrap()
+                        .filter(|s| attribs.contains_name(s.name()))
+                        .for_each(|x| println!("{x}"));
+                },
+            }
+        },
+        Noun::Reservation(verb) => {
+            match verb {
+                StatVerb::Stat(attribs) => {
+                    //TODO don't do a full stat if attribs.names().len() is short
+                    srv.stat_reservation(&None, attribs.out()).unwrap()
+                        .filter(|s| attribs.contains_name(s.name()))
+                        .for_each(|x| println!("{x}"));
+                },
+            }
+        },
+        Noun::Resource(verb) => {
+            match verb {
+                StatVerb::Stat(attribs) => {
+                    //TODO don't do a full if attribs.names().len() is short
+                    srv.stat_resource(&None, attribs.out()).unwrap()
+                        .filter(|s| attribs.contains_name(s.name()))
+                        .for_each(|x| println!("{x}"));
+                },
+            }
+        },
+        Noun::Vnode(verb) => {
+            match verb {
+                StatVerb::Stat(attribs) => {
+                    //TODO don't do a full stat if attribs.names().len() is short
+                    srv.stat_vnode(&None, attribs.out()).unwrap()
+                        .filter(|s| attribs.contains_name(s.name()))
+                        .for_each(|x| println!("{x}"));
+                },
+            }
+        },
+        Noun::Que(verb) => {
+            match verb {
+                StatVerb::Stat(attribs) => {
+                    //TODO don't do a full stat if attribs.names().len() is short
+                    srv.stat_que(&None, attribs.out()).unwrap()
+                        .filter(|s| attribs.contains_name(s.name()))
+                        .for_each(|x| println!("{x}"));
+                },
+            }
+        },
+        Noun::Scheduler(verb) => {
+            match verb {
+                StatVerb::Stat(attribs) => {
+                    //TODO don't do a full stat if attribs.names().len() is short
+                    srv.stat_scheduler(&None, attribs.out()).unwrap()
+                        .filter(|s| attribs.contains_name(s.name()))
+                        .for_each(|x| println!("{x}"));
+                },
+            }
+        },
+        Noun::Server(verb) => {
+            match verb {
+                StatVerb::Stat(attribs) => {
+                    //TODO don't do a full stat if attribs.names().len() is short
+                    srv.stat_scheduler(&None, attribs.out()).unwrap()
+                        .filter(|s| attribs.contains_name(s.name()))
+                        .for_each(|x| println!("{x}"));
+                },
+            }
+        },
+    }
 }
