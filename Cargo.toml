@@ -1,6 +1,6 @@
 [package]
 name = "pbs_cmds"
-version = "0.0.1"
+version = "0.0.2-beta"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 
@@ -9,5 +9,4 @@ pbs = { path = "../pbs", features=["clap"]}
 clap = { version = "4.0", features=["derive"]}
 env_logger = "0.10"
 log = "0.4"
-#nodeset = "0.4"
 hostlist-parser = "0.1"
