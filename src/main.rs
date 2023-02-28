@@ -1,8 +1,6 @@
 use clap::{Parser, Subcommand};
-use pbs::{Attrl, Server, Status};
+use pbs::{Attribs, Server, Status, StatResp};
 use std::collections::BTreeMap;
-
-mod printer;
 
 
 #[derive(Debug, Parser)]
@@ -17,14 +15,14 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Verb {
-    Stat(Attribs),
+    Stat(Filter),
     Sub,
 //    Del,
 }
 
 #[derive(Debug, Subcommand)]
 enum StatVerb {
-    Stat(Attribs),
+    Stat(Filter),
 }
 
 #[derive(Debug, Subcommand)]
@@ -48,7 +46,7 @@ enum Noun {
 }
 
 #[derive(Debug,Default, clap::Args)]
-pub struct Attribs {
+pub struct Filter {
     #[arg(help="name, or nameset ex: casper1[2-7]")]
     name: Option<String>,
     #[arg(short, long, help="filter attributes, ex: state=free, can use =, !=, <, <=, >, and >=")]
@@ -63,12 +61,12 @@ pub struct Attribs {
     json: bool,
 }
 
-impl Attribs {
-    fn attribs(&self) -> Vec<Attrl> {
-        self.attribs.iter().map(|x| x.as_str().into()).collect()
+impl Filter {
+    fn attribs(&self) -> Attribs {
+        (&self.attribs).into()
     }
-    fn out(&self) -> Vec<Attrl> {
-        self.out.iter().map(|x| x.as_str().into()).collect()
+    fn out(&self) -> Attribs {
+        (&self.out).into()
     }
     fn contains_name(&self, name: &str) -> bool {
         if self.name.is_none() { return true};
@@ -85,6 +83,8 @@ impl Attribs {
         }
     }
     fn check_filters(&self, status: &BTreeMap<String,String>) -> bool {
+        todo!()
+/*
         for attrib in self.attribs() {
             if let Some(actual) = status.get(&attrib.fullname()) {
                 let valid = match attrib.op {
@@ -96,30 +96,37 @@ impl Attribs {
                     pbs::batch_op::LT => todo!(),
                     _ => panic!("Invalid comparison type"),
                 };
-                if valid != true {
+                if !valid {
                     return false
                 }
             } else {
                 return false
             }
         }
-        return true
+        true
+*/
     }
 }
 
-fn handle_stat(data: &mut dyn Iterator<Item=Status>, attribs: &Attribs) {
+fn handle_stat(data: &StatResp, attribs: &Filter) {
+    for item in &data.resources {
+        println!("{}",item.name());
+        println!("{:?}",item.attribs())
+    }
+}
+/*
     // filter out resources we don't care about
     let filtered_data = data.filter(|s| attribs.contains_name(s.name()))
         .map(|s| (s.name().to_string(), s.attribs())).map(|(n,mut s)| {s.insert("name".to_string(), n); s}).filter(|s| attribs.check_filters(s))
         .collect::<Vec<BTreeMap<String,String>>>();
-    printer::print_status(&filtered_data, &attribs);
-}
+    printer::print_status(&filtered_data, attribs);
+*/
 
 fn main() {
     env_logger::init();
     let args = Cli::parse();
     let srv = if let Some(s) = args.server {
-        Server::connect_to(&s)
+        Server::connect_to(&s).unwrap()
     } else {
         Server::new()
     };
@@ -137,7 +144,8 @@ fn main() {
             match verb {
                 StatVerb::Stat(attribs) => {
                     //TODO don't do a full host stat if attribs.names().len() is short
-                    handle_stat(&mut srv.stat_host(&None, attribs.out()).unwrap(), &attribs);
+                    let resp = srv.stat_host(&None, attribs.out());
+                    handle_stat(&resp.unwrap(), &attribs);
                 },
             }
         },

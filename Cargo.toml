@@ -5,7 +5,7 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-pbs = { path = "../pbs", features=["clap"]}
+pbs = { path = "../pbs", features=["clap", "regex"]}
 clap = { version = "4.0", features=["derive"]}
 env_logger = "0.10"
 log = "0.4"
