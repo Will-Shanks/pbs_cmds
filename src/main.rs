@@ -1,5 +1,6 @@
 use clap::{Parser, Subcommand};
 use pbs::{Attribs, Server, Status, StatResp};
+use serde_json;
 
 
 #[derive(Debug, Parser)]
@@ -51,7 +52,7 @@ pub struct Filter {
     #[arg(short, long, help="filter attributes, ex: state=free, can use =, !=, <, <=, >, and >=")]
     attribs: Vec<String>,
     #[arg(short, long, conflicts_with="no_attribs", help="attributes to display, ex: state")]
-    out: Vec<String>,
+    out: Option<Vec<String>>,
     #[arg(short, long, action, conflicts_with="out", help="don't print any attributes, only names")]
     no_attribs: bool,
     #[arg(short, long, action, conflicts_with="no_attribs", conflicts_with="json", help="print resources over multiple lines")]
@@ -60,12 +61,21 @@ pub struct Filter {
     json: bool,
 }
 
+enum Printfmt {
+    Json,
+    Long,
+    Short,
+}
+
 impl Filter {
     fn attribs(&self) -> Attribs {
         (&self.attribs).into()
     }
-    fn out(&self) -> Attribs {
-        (&self.out).into()
+    fn out(&self) -> Option<Attribs> {
+        match &self.out {
+            None => None,
+            Some(x) => Some(x.into()),
+        }
     }
     fn names(&self) -> Vec<String> {
         if let Some(name) = &self.name {
@@ -79,12 +89,28 @@ impl Filter {
         if !status.attribs().check_filter(&self.attribs()) {return false}
         true
     }
+    fn printfmt(&self) -> Printfmt {
+        if self.json { return Printfmt::Json; }
+        if self.long { return Printfmt::Long }
+        Printfmt::Long
+        //Printfmt::Short
+    }
 }
 
 fn handle_stat(data: &StatResp, attribs: &Filter) {
     data.resources.iter().filter(|r| attribs.check(r)).for_each( |item| {
-        println!("{}",item.name());
-        println!("{:?}",item.attribs())
+        match attribs.printfmt() {
+            Printfmt::Long => {
+                println!("{}",item.name());
+                println!("{}",item.attribs());
+            },
+            Printfmt::Short => todo!(),
+            Printfmt::Json  => {
+                let mut attribs = item.attribs().json();
+                attribs.as_object_mut().unwrap().insert("name".to_string(), serde_json::Value::String(item.name()));
+                println!("{}",serde_json::to_string_pretty(&attribs).unwrap());
+            },
+        }
     })
 }
 
