@@ -47,9 +47,7 @@ enum Noun {
 
 #[derive(Debug,Default, clap::Args)]
 pub struct Submit {
-    #[arg(help="name, or nameset ex: casper1[2-7]")]
-    name: Option<String>,
-    #[arg(short, long, help="attributes")]
+    #[arg(help="attributes")]
     attribs: Vec<String>,
     #[arg(short, long, help="job script")]
     script: String,
