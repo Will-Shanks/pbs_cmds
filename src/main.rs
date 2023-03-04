@@ -16,7 +16,7 @@ struct Cli {
 #[derive(Debug, Subcommand)]
 enum Verb {
     Stat(Filter),
-    Sub,
+    Sub(Submit),
 //    Del,
 }
 
@@ -46,6 +46,24 @@ enum Noun {
 }
 
 #[derive(Debug,Default, clap::Args)]
+pub struct Submit {
+    #[arg(help="name, or nameset ex: casper1[2-7]")]
+    name: Option<String>,
+    #[arg(short, long, help="attributes")]
+    attribs: Vec<String>,
+    #[arg(short, long, help="job script")]
+    script: String,
+    #[arg(short, long, help="job que")]
+    que: String,
+    #[arg(short, long, action, help="don't print any attributes, only names")]
+    no_attribs: bool,
+    #[arg(short, long, action, conflicts_with="no_attribs", conflicts_with="json", help="print resources over multiple lines")]
+    long: bool,
+    #[arg(short, long, action, conflicts_with="long", help="output in json")]
+    json: bool,
+}
+
+#[derive(Debug,Default, clap::Args)]
 pub struct Filter {
     #[arg(help="name, or nameset ex: casper1[2-7]")]
     name: Option<String>,
@@ -65,6 +83,12 @@ enum Printfmt {
     Json,
     Long,
     Short,
+}
+
+impl Submit {
+    fn attribs(&self) -> Attribs {
+        (&self.attribs).into()
+    }
 }
 
 impl Filter {
@@ -98,20 +122,24 @@ impl Filter {
 }
 
 fn handle_stat(data: &StatResp, attribs: &Filter) {
-    data.resources.iter().filter(|r| attribs.check(r)).for_each( |item| {
-        match attribs.printfmt() {
-            Printfmt::Long => {
+    let data = data.resources.iter().filter(|r| attribs.check(r));
+    match attribs.printfmt() {
+        Printfmt::Long => {
+            data.for_each( |item| {
                 println!("{}",item.name());
                 println!("{}",item.attribs());
-            },
-            Printfmt::Short => todo!(),
-            Printfmt::Json  => {
+            });
+        },
+        Printfmt::Short => todo!(),
+        Printfmt::Json  => {
+            let out: Vec<_> = data.map(|item|{
                 let mut attribs = item.attribs().json();
                 attribs.as_object_mut().unwrap().insert("name".to_string(), serde_json::Value::String(item.name()));
-                println!("{}",serde_json::to_string_pretty(&attribs).unwrap());
-            },
-        }
-    })
+                attribs
+            }).collect();
+            println!("{}", serde_json::to_string(&out).unwrap());
+        },
+    }
 }
 
 fn main() {
@@ -128,7 +156,10 @@ fn main() {
                 Verb::Stat(attribs) => {
                     handle_stat(&srv.stat_job(attribs.attribs(), attribs.out()).unwrap(), &attribs);
                 },
-                Verb::Sub => {todo!()},
+                Verb::Sub(attribs) => {
+                    let resp = &srv.submit(attribs.attribs(), &attribs.script, &attribs.que);
+                    println!("{resp:?}");
+                },
                 //Verb::Del => {todo!()},
             }
         },
