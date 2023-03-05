@@ -14,10 +14,10 @@ struct Cli {
 }
 
 #[derive(Debug, Subcommand)]
-enum Verb {
+enum JobVerb {
     Stat(Filter),
     Sub(Submit),
-//    Del,
+    Del(DelAttribs),
 }
 
 #[derive(Debug, Subcommand)]
@@ -28,7 +28,7 @@ enum StatVerb {
 #[derive(Debug, Subcommand)]
 enum Noun {
     #[command(subcommand)]
-    Job(Verb),
+    Job(JobVerb),
     #[command(subcommand)]
     Host(StatVerb),
     #[command(subcommand, name="resv")]
@@ -43,6 +43,14 @@ enum Noun {
     Scheduler(StatVerb),
     #[command(subcommand, name="srv")]
     Server(StatVerb),
+}
+
+#[derive(Debug,Default, clap::Args)]
+pub struct DelAttribs {
+    #[arg(help="jobid")]
+    jobid: String,
+    #[arg(help="message appended to job email")]
+    message: Option<String>,
 }
 
 #[derive(Debug,Default, clap::Args)]
@@ -151,14 +159,20 @@ fn main() {
     match args.noun {
         Noun::Job(verb) => {
             match verb {
-                Verb::Stat(attribs) => {
+                JobVerb::Stat(attribs) => {
                     handle_stat(&srv.stat_job(attribs.attribs(), attribs.out()).unwrap(), &attribs);
                 },
-                Verb::Sub(attribs) => {
+                JobVerb::Sub(attribs) => {
                     let resp = &srv.submit(attribs.attribs(), &attribs.script, &attribs.que);
                     println!("{resp:?}");
                 },
-                //Verb::Del => {todo!()},
+                JobVerb::Del(attribs)  => {
+                    if let Err(e) = &srv.del_job(&attribs.jobid, attribs.message.as_deref()) {
+                        println!("Error deleting job: {e}");
+                    } else {
+                        println!("Job deleted");
+                    }
+                },
             }
         },
         Noun::Host(verb) => {
