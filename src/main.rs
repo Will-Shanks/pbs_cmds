@@ -21,6 +21,14 @@ enum JobVerb {
 }
 
 #[derive(Debug, Subcommand)]
+enum ResvVerb {
+    Stat(Filter),
+    Sub(Submit),
+    Del(DelAttribs),
+    Mod(ModAttribs),
+}
+
+#[derive(Debug, Subcommand)]
 enum StatVerb {
     Stat(Filter),
 }
@@ -32,7 +40,7 @@ enum Noun {
     #[command(subcommand)]
     Host(StatVerb),
     #[command(subcommand, name="resv")]
-    Reservation(StatVerb),
+    Reservation(ResvVerb),
     #[command(subcommand)]
     Resource(StatVerb),
     #[command(name="vnode", subcommand)]
@@ -46,11 +54,17 @@ enum Noun {
 }
 
 #[derive(Debug,Default, clap::Args)]
+pub struct ModAttribs {
+    #[arg(help="name")]
+    name: String,
+    #[arg(help="attributes")]
+    attribs: Vec<String>,
+}
+
+#[derive(Debug,Default, clap::Args)]
 pub struct DelAttribs {
-    #[arg(help="jobid")]
-    jobid: String,
-    #[arg(help="message appended to job email")]
-    message: Option<String>,
+    #[arg(help="name")]
+    name: String,
 }
 
 #[derive(Debug,Default, clap::Args)]
@@ -92,6 +106,11 @@ enum Printfmt {
 }
 
 impl Submit {
+    fn attribs(&self) -> Attribs {
+        (&self.attribs).into()
+    }
+}
+impl ModAttribs {
     fn attribs(&self) -> Attribs {
         (&self.attribs).into()
     }
@@ -163,11 +182,11 @@ fn main() {
                     handle_stat(&srv.stat_job(attribs.attribs(), attribs.out()).unwrap(), &attribs);
                 },
                 JobVerb::Sub(attribs) => {
-                    let resp = &srv.submit(attribs.attribs(), &attribs.script, &attribs.que);
+                    let resp = &srv.submit_job(attribs.attribs(), &attribs.script, &attribs.que);
                     println!("{resp:?}");
                 },
                 JobVerb::Del(attribs)  => {
-                    if let Err(e) = &srv.del_job(&attribs.jobid, attribs.message.as_deref()) {
+                    if let Err(e) = &srv.del_job(&attribs.name) {
                         println!("Error deleting job: {e}");
                     } else {
                         println!("Job deleted");
@@ -186,9 +205,28 @@ fn main() {
         },
         Noun::Reservation(verb) => {
             match verb {
-                StatVerb::Stat(attribs) => {
+                ResvVerb::Stat(attribs) => {
                     //TODO don't do a full stat if attribs.names().len() is short
                     handle_stat(&srv.stat_reservation(&None, attribs.out()).unwrap(), &attribs);
+                },
+                ResvVerb::Sub(attribs) => {
+                    match &srv.submit_resv(attribs.attribs()) {
+                        Err(e) => println!("Error submitting reservation: {e}"),
+                        Ok(id) => println!("Reservation submitted id: {id}"),
+                    }
+                },
+                ResvVerb::Mod(attribs) => {
+                    match &srv.mod_resv(&attribs.name, attribs.attribs()) {
+                        Err(e) => println!("Error submitting reservation: {e}"),
+                        Ok(id) => println!("Reservation submitted id: {id}"),
+                    }
+                },
+                ResvVerb::Del(attribs) => {
+                    if let Err(e) = &srv.del_resv(&attribs.name) {
+                        println!("Error deleting reservation: {e}");
+                    } else {
+                        println!("Reservation deleted");
+                    }
                 },
             }
         },
