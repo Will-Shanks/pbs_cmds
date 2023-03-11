@@ -23,7 +23,7 @@ enum JobVerb {
 #[derive(Debug, Subcommand)]
 enum ResvVerb {
     Stat(Filter),
-    Sub(Submit),
+    Sub(ResvSub),
     Del(DelAttribs),
     Mod(ModAttribs),
 }
@@ -68,6 +68,12 @@ pub struct DelAttribs {
 }
 
 #[derive(Debug,Default, clap::Args)]
+pub struct ResvSub {
+    #[arg(help="attributes")]
+    attribs: Vec<String>,
+}
+
+#[derive(Debug,Default, clap::Args)]
 pub struct Submit {
     #[arg(help="attributes")]
     attribs: Vec<String>,
@@ -106,6 +112,11 @@ enum Printfmt {
 }
 
 impl Submit {
+    fn attribs(&self) -> Attribs {
+        (&self.attribs).into()
+    }
+}
+impl ResvSub {
     fn attribs(&self) -> Attribs {
         (&self.attribs).into()
     }
