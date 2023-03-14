@@ -14,3 +14,6 @@
 - different systems require differnt attributes
 - NCAR requires a que, account, job name, walltime, and select
 - minimal example: `./pbs_cmds job sub -s ../../benchmarks/stream/stream.sh -q casper Account_Name=SSSG0001 Job_Name=test Resource_List.walltime=1:00:00 Resource_List.select=ncpus=1:ompthreads=1`
+
+## Reservation submission
+- minimal example: `./pbs_cmds resv sub Reserve_Name=shanks-test reserve_start=1678838400 reserve_duration=30000`

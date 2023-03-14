@@ -163,7 +163,9 @@ fn handle_stat(data: &StatResp, attribs: &Filter) {
         Printfmt::Long => {
             data.for_each( |item| {
                 println!("{}",item.name());
-                println!("{}",item.attribs());
+                if !attribs.no_attribs {
+                    println!("{}",item.attribs());
+                }
             });
         },
         Printfmt::Short => todo!(),
