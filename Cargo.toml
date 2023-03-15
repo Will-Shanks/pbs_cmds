@@ -3,6 +3,8 @@ name = "pbs_cmds"
 version = "0.0.2-beta"
 edition = "2021"
 license = "MIT OR Apache-2.0"
+description = "CLI for interacting with a PBS server"
+repository = "https://github.com/Will-Shanks/pbs_cmds"
 
 [dependencies]
 pbs = { path = "../pbs" }
