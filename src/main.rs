@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
-use pbs::{Attribs, Server, Status, StatResp};
+use pbs::{Attribs, Server, Status, StatResp, ResvModFlag};
 use serde_json;
 
 
@@ -59,6 +59,9 @@ pub struct ModAttribs {
     name: String,
     #[arg(help="attributes")]
     attribs: Vec<String>,
+    #[arg(short, long, action, help="-Wforce option")]
+    force: bool,
+
 }
 
 #[derive(Debug,Default, clap::Args)]
@@ -238,7 +241,10 @@ fn main() {
                     }
                 },
                 ResvVerb::Mod(attribs) => {
-                    match &srv.mod_resv(&attribs.name, attribs.attribs()) {
+                    let mut flags = Vec::new();
+                    if attribs.force {flags.push(ResvModFlag::Force)};
+                    let resp = srv.mod_resv(&attribs.name, attribs.attribs(), flags);
+                    match &resp {
                         Err(e) => println!("Error submitting reservation: {e}"),
                         Ok(id) => println!("Reservation submitted id: {id}"),
                     }
