@@ -1,6 +1,5 @@
 use clap::{Parser, Subcommand};
-use pbs::{Attribs, Server, Status, StatResp, ResvModFlag};
-use serde_json;
+use pbs::{Attribs, Server, Status, StatResp, ResvSubFlag, ResvModFlag};
 
 
 #[derive(Debug, Parser)]
@@ -74,6 +73,8 @@ pub struct DelAttribs {
 pub struct ResvSub {
     #[arg(help="attributes")]
     attribs: Vec<String>,
+    #[arg(short, long, action, help="Create maintenance reservation")]
+    maintenance: bool,
 }
 
 #[derive(Debug,Default, clap::Args)]
@@ -111,7 +112,7 @@ pub struct Filter {
 enum Printfmt {
     Json,
     Long,
-    Short,
+    //Short,
 }
 
 impl Submit {
@@ -135,10 +136,7 @@ impl Filter {
         (&self.attribs).into()
     }
     fn out(&self) -> Option<Attribs> {
-        match &self.out {
-            None => None,
-            Some(x) => Some(x.into()),
-        }
+        self.out.as_ref().map(|x| x.into())
     }
     fn names(&self) -> Vec<String> {
         if let Some(name) = &self.name {
@@ -180,7 +178,7 @@ fn handle_stat(data: &StatResp, attribs: &Filter) {
                 }
             });
         },
-        Printfmt::Short => todo!(),
+        //Printfmt::Short => todo!(),
         Printfmt::Json  => {
             let out: Vec<_> = data.map(|item|{
                 let mut attribs = item.attribs().json();
@@ -235,7 +233,10 @@ fn main() {
                     handle_stat(&srv.stat_reservation(&None, attribs.out()).unwrap(), &attribs);
                 },
                 ResvVerb::Sub(attribs) => {
-                    match &srv.submit_resv(attribs.attribs()) {
+                    let mut flags = Vec::new();
+                    if attribs.maintenance {flags.push(ResvSubFlag::Maintenance)};
+                    let resp =srv.submit_resv(attribs.attribs(), flags);
+                    match &resp{
                         Err(e) => println!("Error submitting reservation: {e}"),
                         Ok(id) => println!("Reservation submitted id: {id}"),
                     }
