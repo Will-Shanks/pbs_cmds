@@ -7,8 +7,9 @@
   - currently can filter by, if an attrib is set, if it is eq, or not equal
   - plan on implementing <, >, <=, and >=
 - can filter by name, this uses nodesets
-  - need to be exact, ex: `./pbs_cmds host stat casper[2-7]`
-  - plan on making this smarter, so things like `./pbs_cmds host stat casper*` will work
+  - ex: `./pbs_cmds host stat casper[2-7]` matches casper2, casper3, ... casper7
+  - ex: `./pbs_cmds host stat gu00[0-1]2` matches gu0002 and gu00012
+  - checks given name with start of returned nodes e.g. `./pbs_cmds host stat gu` will match all gust nodes
 
 ## Job submission
 - different systems require differnt attributes

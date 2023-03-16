@@ -145,8 +145,17 @@ impl Filter {
         }
     }
     fn check(&self, status: &Status) -> bool {
-        if self.name.is_some() && !self.names().contains(&status.name()) {return false}
-        if !status.attribs().check_filter(&self.attribs()) {return false}
+        if self.name.is_some(){
+            let mut found = false;
+            for n in self.names() {
+                if status.name().starts_with(&n) {
+                    found = true;
+                    break;
+                }
+            }
+            if !found { return false }
+        }
+        if !status.attribs().check_filter(&self.attribs()) { return false }
         true
     }
     fn printfmt(&self) -> Printfmt {
