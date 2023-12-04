@@ -13,3 +13,8 @@ env_logger = "0.10"
 log = "0.4"
 hostlist-parser = "0.1"
 serde_json = "1"
+
+[package.metadata.generate-rpm]
+assets = [
+    { source = "target/release/pbs_cmds", dest = "/opt/ncar/sbin/pbs_cmds", mode = "755" },
+]
