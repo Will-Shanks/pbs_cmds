@@ -20,4 +20,4 @@ jobs:
       - name: Build rpm
         run: cargo generate-rpm
       - name: publish to gitea
-        run: curl --user shanks:{{ PACKAGING_TOKEN }} --upload-file target/generate-rpm/pbs_cmds-*.rpm https://git.hsg.ucar.edu/shanks/pbs_cmds/shanks/rpm/upload
+        run: curl --user shanks:${{ secrets.PACKAGING_TOKEN }} --upload-file target/generate-rpm/pbs_cmds-*.rpm https://git.hsg.ucar.edu/api/packages/shanks/rpm/upload
