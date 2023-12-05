@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  Explore-Gitea-Actions:
+  NCAR rpm packaging:
     runs-on: host
     steps:
       - name: Check out repository code
